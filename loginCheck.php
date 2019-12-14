@@ -1,11 +1,16 @@
 <?php
     session_start();
 
-    $error = "username/password incorrect";
 
     include 'dbconnect.php';
 
     if(isset($_POST['submit'])){
+
+        if($_POST['captcha'] != $_SESSION['captcha']['code']){
+            $_SESSION["error"] = "Wrong captcha code";
+            header("location: login.php");
+            exit;
+        }
 
         $stmt = $con->prepare("select password, id, role from user where BINARY username= BINARY ?");
         $stmt->bind_param("s",$_POST['username']);
@@ -24,24 +29,18 @@
                 header("location:home.php");
             }
             else
-                $_SESSION["error"] = $error;
+                $_SESSION["error"] = "username/password incorrect";
                 header("location: login.php");
+
                 
         }
         
         else            
-            $_SESSION["error"] = $error;
+            $_SESSION["error"] = "username/password incorrect";
             header("location: login.php");
             
 
     }
 
-    function debug_to_console($data) {
-    $output = $data;
-    if (is_array($output))
-        $output = implode(',', $output);
-
-    echo "<script>console.log('Debug Objects: " . $output . "' );</script>";
-    }
 
 ?>

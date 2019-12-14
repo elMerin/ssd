@@ -1,5 +1,12 @@
 <?php
 	include 'session.php';
+
+	if( $_SESSION['last_activity'] < time()-$_SESSION['expire_time'] ) {
+		$_SESSION['expired'] = true;
+    	header('Location: logout.php'); 
+	} else{ 
+    	$_SESSION['last_activity'] = time(); 
+	}
 ?>
 
 
@@ -21,6 +28,23 @@
 	</tr>
 	<?php 
 	include 'dbconnect.php';
+	unset($_SESSION['status']);
+
+	if(isset($_POST['delete'])){
+		$stmt = $con->prepare("delete from ticket where id = ?");
+        $stmt->bind_param("s",$_SESSION['ticketID']);
+        $stmt->execute();
+        
+        header('location: home.php');
+	}
+
+	if(isset($_POST['update'])){
+		$stmt = $con->prepare("update ticket set status = ? where id = ?");
+        $stmt->bind_param("ss",$_POST['stat'],$_SESSION['ticketID']);
+        $stmt->execute();
+        
+        header('location: editTicket.php');
+	}
 
 	if(isset($_SESSION['ticketID'])){
 
@@ -31,11 +55,49 @@
         $result = $stmt->get_result();
 
 		if($row = $result-> fetch_assoc()){
+			$_SESSION['status'] = $row['status'];
 			echo "<tr><td>". get_username($row["finderID"]) ."</td><td>". 
 			get_username($row["assigneeID"]) . "</td><td>" . htmlspecialchars($row["projectID"]) .  
-				"</td><td>" . htmlspecialchars($row["description"]) .  "</td><td>" . htmlspecialchars($row["creationDate"]) .  "</td><td>" . htmlspecialchars($row["type"]) .  "</td><td>" . htmlspecialchars($row["priority"]) .  "</td><td>" . htmlspecialchars($row["status"]) . "</td><tr>";
+				"</td><td>" . htmlspecialchars($row["description"]) .  "</td><td>" . htmlspecialchars($row["creationDate"]) .  "</td><td>" . htmlspecialchars($row["type"]) .  "</td><td>" . htmlspecialchars($row["priority"]) .  "</td><td><br><form action='editTicket.php' method='POST'>" . get_status()
+				. "</td><td><input type = 'Submit' name = 'update' value = 'Update'></form></td><tr>";
 		}
 		
+	}
+
+
+
+	function get_status(){
+		include 'dbconnect.php';
+		$stmt = $con->prepare("select status from ticket where id = ?");
+        $stmt->bind_param("s",$_SESSION['ticketID']);
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if($row = $result-> fetch_assoc()){
+
+			if(htmlspecialchars($row["status"])=='open'){
+				return "<select name = 'stat'>
+					  <option value='open' selected>open</option>
+					  <option value='resolved'>resolved</option>
+					  <option value='closed'>closed</option>
+				</select>";
+			}
+			else if (htmlspecialchars($row["status"])=='resolved'){
+				return "<select name = 'stat'>
+					  <option value='open'>open</option>
+					  <option value='resolved' selected>resolved</option>
+					  <option value='closed'>closed</option>
+				</select>";
+			}
+			else if(htmlspecialchars($row["status"])=='closed'){
+				return "<select name = 'stat'>
+					  <option value='open'>open</option>
+					  <option value='resolved'>resolved</option>
+					  <option value='closed' selected>closed</option>
+				</select>";
+			}
+		}
 	}
 
 
@@ -60,7 +122,7 @@
 
 	if(isset($_POST['addComment']) && isset($_SESSION['ticketID'])){
 		$stmt = $con->prepare("INSERT INTO comment(ticketID, userID, content, creationDate)
-        VALUES(?, ?, ?, CURDATE())");
+        VALUES(?, ?, ?, CURRENT_TIMESTAMP())");
         $stmt->bind_param("sss", $ticketID, $userID, $content);
 
         $ticketID = filter_var($_SESSION["ticketID"], FILTER_SANITIZE_NUMBER_INT);
@@ -77,15 +139,28 @@
         header("location: editTicket.php");
 
 	}
-
+	if($_SESSION["userRole"] == "admin"){
+		echo "<form action = 'editTicket.php' method = 'POST'><input type = 'Submit' name = 'delete' value = 'Delete ticket'></form>";
+	}
 ?>
 
 <h2>Comments</h2><br>
 
 <form action = 'editTicket.php' method = 'POST'>
 
-<input type = "text" name = "commentField" autocomplete="off" maxlength="255" required>
-<input type = "Submit" name = "addComment"><br>
+<input type = "text" name = "commentField" autocomplete="off" maxlength="255" required 
+<?php  
+
+	if(isset($_SESSION['status']) && $_SESSION['status'] == 'closed'){
+		echo 'disabled';
+	}
+?>>
+<input type = "Submit" name = "addComment" 
+<?php  
+	if(isset($_SESSION['status']) && $_SESSION['status'] == 'closed'){
+		echo 'disabled';
+	}
+?>><br>
 	<?php  
 	    if(isset($_SESSION["error"])){
 	        $error = $_SESSION["error"];
@@ -110,7 +185,9 @@
 		}
 	}
 
+
 ?>
+
 
 
 <br><br>

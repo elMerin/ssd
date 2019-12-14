@@ -1,6 +1,13 @@
 <?php
 	include 'session.php';
 
+	if( $_SESSION['last_activity'] < time()-$_SESSION['expire_time'] ) {
+		$_SESSION['expired'] = true;
+    	header('Location: logout.php'); 
+	} else{ 
+    	$_SESSION['last_activity'] = time(); 
+	}
+
 	if(isset($_SESSION["userRole"]) && $_SESSION["userRole"] != "admin"){
         header("location: home.php");
         exit;
@@ -77,7 +84,7 @@
 	        else{
 	        	$_SESSION["error"] = "Could not create new user";
 	        }
-	        
+
 	        header("location: createUser.php");
 	    }
 

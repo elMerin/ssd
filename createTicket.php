@@ -1,5 +1,12 @@
 <?php
 	include 'session.php';
+
+	if( $_SESSION['last_activity'] < time()-$_SESSION['expire_time'] ) {
+		$_SESSION['expired'] = true;
+    	header('Location: logout.php'); 
+	} else{ 
+    	$_SESSION['last_activity'] = time(); 
+	}
 ?>
 
 <link rel="stylesheet" type="text/css" href="styleSheet.css">
@@ -58,7 +65,7 @@
 			$assigneeID = $row['id'];		
 
 			$stmt = $con->prepare("INSERT INTO ticket(finderID, assigneeID, projectID, description, creationDate, type, priority)
-	        VALUES(?, ?, ?, ?, CURDATE(), ?, ?)");
+	        VALUES(?, ?, ?, ?, CURRENT_TIMESTAMP(), ?, ?)");
 	        $stmt->bind_param("ssssss",$finder,$assignee, $projectID, $description, $type, $priority);
 
 	        $finder = filter_var($_SESSION["userID"], FILTER_SANITIZE_NUMBER_INT);
@@ -82,13 +89,6 @@
         
     }
 
-    function debug_to_console($data) {
-    $output = $data;
-    if (is_array($output))
-        $output = implode(',', $output);
-
-    echo "<script>console.log('Debug Objects: " . $output . "' );</script>";
-    }
 
 ?>  
 <button onclick="window.location.href = 'home.php';">Tickets</button>
